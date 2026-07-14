@@ -1,0 +1,243 @@
+                                   ASM-8E-v1.0a
+              Assembler para a UCP educacional de 8-bits CPU-8E
+
+                                            Copyright (c) 2009 Joel Guilherme.
+
+------------------------------------------------------------------------------
+E concedida a permissao para copiar, distribuir e modificar este documento sob 
+os termos da 'Licenca para Documentacao Livre GNU', "GNU Free Documentation 
+License" (Copyleft), Versao 1.3 ou qualquer versao subsequente publicada pela 
+Free Software Foundation. Uma copia desta licenca acompanha este documento na 
+forma do arquivo texto denominado "Copiando(FDL).txt".
+------------------------------------------------------------------------------
+
+(*
+ Este arquivo foi editado propositalmente sem qualquer acentuacao, para
+ permitir sua leitura em qualquer ambiente operacional, na forma de um
+ "texto puro".
+*)
+
+1. Introducao
+   O ASM8E eh um Assembler (programa montador) que foi desenvolvido para permi-
+   tir o facil e rapido desenvolvimento de programas para a CPU-8E, realizando
+   a traducao de um programa-fonte em linguagem Assembly para um programa em 
+   linguagem objeto (binaria) executavel por esta CPU, em qualquer de suas 
+   formas de implementacao. O ASM8E v1.0 foi testado com o simulador CPU-8E
+   v1.0, e deve ser compatível com futuras versões da CPU-8E.
+
+2. Assembly-8E - linguagem Assembly para o ASM8E:
+   O Assembly-8E eh a linguagem assembly entendida pelo montador. Como usual,
+   uma linha em Assembly-8E eh composta, genericamente, de quatro campos:
+     i. Rotulo, ou Label - eh um elemento simbolico associado ao endereco de
+        uma instrucao ou variavel em memoria;
+    ii. Instrucao - se constitui em uma abreviatuta simbolica (mnemônico) 
+        correspondente a uma instrucao de maquina (a CPU-8E neste caso), ou um
+        comando para o proprio montador;
+   iii. Operando - serve para identificar operandos ou enderecos explicitos que
+        sejam requeridos por uma instrucao, podendo ser simbolicos ou numericos;
+    iv. Comentarios -  nao constituem parte efetiva de uma instrucao mas servem
+        para esclarecer a logica do programa pelo programador.
+
+   Uma linha tipica de um programa escrito em Assembly-8E poderia ser
+
+   Label    Instr.   Oper.      Comentario
+   ------   ------   ------     ------------
+   Teste    LOD      [Num]      ; carrega ACC com o valor contido em "Num"
+
+   onde
+
+   "Teste"     - eh um label associado ao endereco desta instrucao em memoria
+   "LOD"       - eh a instrucao "Load ACC", da CPU-8E;
+   "Num"       - eh o operando, em modo direto, definido atraves de um label;
+   "; carr..." - eh o comentario acrescentado pelo programador.
+
+   As seguintes especificacoes se aplicam a cada um dos campos:
+
+   Label:
+   -----
+   Um label valido eh uma sequencia de nao mais que seis (6) caracteres, 
+   iniciando obrigatoriamente com uma letra na coluna um (1) de uma linha 
+   (primeira coluna da linha), e os demais caracteres devem pertencer ao 
+   alfabeto {'0'..'9','A'..'Z','a'..'z','-','.'}. Maiusculas e minusculas sao
+   interpretadas diferentemente (case sensitive), de modo que, por exemplo, o
+   label "Teste" eh tratado como distinto de "TESTE" e "teste".
+
+   Instrucao:
+   ---------
+   O campo de instrucao pode conter qualquer instrucao de maquina valida para a 
+   CPU-8E, sendo um campo alfabetico de tres (3) letras. Instrucoes podem ser 
+   escritas, indistintamente, em maiusculas, minusculas, ou um misto destas
+   (case insensitive).
+   As instrucoes validas para a CPU-8E correspondem aos mnemônicos dos codigos 
+   de operacao (OpCodes) definidos na especificacao da UCP-8E. Para completude,
+   sao os seguintes os codigos disponiveis para a CPU-8E em sua versao atual
+   (v2.0):
+
+                     Modo de
+   OpCode  Hex     enderecamento   Operacao
+   ------  -----  ---------------  -----------------------------------------
+    HLT    00          -           HALT (termina o processamento)
+    NOP    01          -           Nenhuma operacao
+    NOT    02     (implicito)      Inverte ACC
+    JMP    C4       direto         Jump incondicional para endereco
+    JEQ    C5       direto         Jump se ACC=0
+    JGT    C6       direto         Jump se ACC > 0 (compl. de 2)
+    JGE    C7       direto         Jump se ACC >= 0 (compl. de 2)
+    STO    D0       direto         Armazena ACC
+    LOD    91/D1  imediato/direto  Carrega ACC
+    CMP    94/D4  Imediato/direto  Compara ACC c/ operando e seta flags
+    ADD    95/D5  imediato/direto  Soma ACC c/ operando
+    SUB    96/D6  imediato/direto  Subtrai operando de ACC
+    AND    9A/DA  imediato/direto  'E' logico do ACC com operando
+    XOR    9B/DB  imediato/direto  'Ou Exclusivo' do ACC com operando
+   ------  -----  ---------------  -----------------------------------------
+
+   Alem das instrucoes de maquina, tambem ocupam o campo de instrucao as 
+   chamadas pseudoinstrucoes, que sao ali colocadas por conveniencia, corres-
+   pondendo, na realidade a instrucoes para o proprio programa montador.
+   As pseudo-instrucoes presentemente definidas para o Assembly-8E sao as 
+   seguintes:
+
+   OpCode  Hex  Operacao
+   ------  ---  ---------------------------------------------------------------
+    EQU    00   "Equate": atribui o valor do operando ao label associado,
+                definindo uma constante.
+    DDB    01   "Define Data Byte": atribui o valor do operando à posicao de
+                memoria ocupada pela instrucao, inicializando uma variavel.
+   ------  ---  ---------------------------------------------------------------
+
+   Operando:
+   --------
+   Um operando tanto pode ser definido simbolicamente (um simbolo ou literal),
+   quando assume a forma e o valor de um label definido em algum outro ponto do 
+   programa, ou numerico, quando pode ser representado em notacao decimal ou 
+   hexadecimal. Temos portanto tres tipos de representacao de um operando:
+   - Operando simbolico - deve corresponder a um label definido em algum ponto
+     do programa, estando portanto sujeito às regras estabelecidas para estes;
+   - Operando numerico (decimal) - corresponde a uma representacao numerica 
+     usual de um inteiro, com digitos decimais. Como exemplo, '15' (quinze) eh 
+     uma representacao valida para um operando numerico em decimal;
+   - Operando numerico (hexadecimal) - corresponde a uma representacao de um 
+     inteiro na base-16, na forma "ddH", onde 'd' representa um digito hexade-
+     cimal (0..9,A..F). Se o primeiro digito for uma letra, deve-se prefixar o
+     numero com '0' (zero). Os digitos alfabeticos (A..F) e o 'H' indicativo de
+     representacao hexadecimal, podem ser escritos tanto em maiusculas quanto 
+     em minusculas, ou um misto destas. Como exemplo, '7BH', '7bH' e '7bh' sao
+     representacoes validas para um operando numerico em hexadecimal, todas 
+     representando o inteiro 123 decimal (cento e vinte e tres), assim como
+     '0A7h' eh uma representacao valida para para o inteiro 167 decimal, mas
+     'A7h' nao o eh, pois seria confundido com um label.
+   Dependendo da operacao, um operando pode ser definido por enderecamento 
+   imediato ou direto. 
+
+   Enderecamento imediato - eh representado simplesmente pelo proprio operando,
+   em qualquer formato, significando "operar sobre o valor correspondente a".
+   Por exemplo, a instrucao
+
+   Soma    ADD	45               ; Somar '45' ao ACC
+
+   corresponde a executar a soma do valor '45' ao ACC e colocar o resultado em ACC.
+
+   Enderecamento direto - eh representado pelo operando entre colchetes, 
+   significando "operar sobre o valor armazenado no endereco cujo valor 
+   corresponde a". Por exemplo, a instrucao
+
+   Soma    ADD  [45]             ; Somar o conteudo de M[45] ao ACC
+
+   corresponde a executar a soma do valor armazenado na posicao de memoria de
+   endereco '45' ao acumulador e colocar o resultado em ACC.
+
+   Nota: As instrucoes JMP,JEQ, JGT, JGE e STO somente teem enderecamento direto,
+   mas o operando eh imediato, jah que o operando eh o proprio endereco. Assim, a
+   notacao correta para estas instrucoes eh
+
+   Jump   JMP   Addr
+   Store  STO   Addr
+
+   onde Addr eh um operando numerico ou simbolico, sempre representando um 
+   endereco. Todavia, o ASM8E aceita tambem a notacao
+
+   Jump   JMP   [Addr]
+   Store  STO   [Addr]
+
+   Comentario:
+   ----------
+   Um comentario eh um texto livre, limitado apenas a que deve sempre ser 
+   iniciado pelo caracter ';' (ponto-e-virgula) e que o tamanho total da linha
+   de instrucao nao deve exceder a 255 caracteres, incluindo caracteres de 
+   controle como tabulacoes e 'final de linha'.
+
+   Caracteres Especiais:
+   --------------------
+   Separador - eh um caracter especial que separa um campo de outro campo 
+   adjacente, em uma linha-fonte. Os separadores aceitos pelo ASM8E sao "Tab"
+   (tabulacao) e "espaco".
+   Terminador - eh um tipo especial de separador que encerra uma linha-fonte, 
+   do ponto de vista do assembler. Sao separadores: <CR> ("Carriage Return" =
+   "retorno de carro"), <LF> ("Line Feed" = "alimentacao de linha") e <;>, este
+   ultimo por iniciar um comentario, sempre descartado pelo assembler. Sempre
+   que um destes caracteres é encontrado o processo de varredura de uma linha
+   para fins da tarefa de montagem eh interrompido, passando-se para a linha 
+   seguinte. Sao ignorados quaisquer caracteres a partir deste ponto, na linha
+   em analise.
+
+   Excetuando-se o campo de operandos, que depende da natureza da operacao 
+   definida pelo campo 'instrucao' para determinar sua necessidade de presenca
+   ou ausencia, os demais campos sao opcionais, de modo que qualquer combinacao
+   de presenca/ausencia de um label, instrucao e comentario eh, a principio,
+   aceitavel.
+   O arquivo de teste "teste.asm", parte deste pacote, ilustra a sintaxe das
+   instrucoes em Assembly-8E aqui descrita.
+
+3. Utilizando ASM8E
+   A utilizacao do montador ASM-8E eh muito simples, nao requerendo qualquer
+   instalacao especial. Simplesmente copie o executavel "ASM8E.exe" e este 
+   arquivo de auxilio "ASM8E.txt" para um diretorio de sua escolha, 
+   preferencialmente no camnho do sistema operacional, e execute-o, passando
+   como parâmetro o nome do arquivo fonte a ser montado, como, por exemplo
+
+> asm8e teste.asm
+  CPU-8E Assembler V1.0 - Prof. Joel
+  Montando "teste.asm"
+  Gerando Listagem em "teste.lst"
+  Gerando arquivo binario em "teste.bin"
+  Montagem concluida com sucesso!
+  23 linhas-fonte processadas.
+>
+
+   Se o arquivo fonte nao for passado como parâmetro na execucao do programa, 
+   este sera solicitado ao usuario. Se o arquivo fonte nao estiver no mesmo 
+   diretorio que o montador forneca o caminho completo para o mesmo, como,
+   por exemplo
+
+> asm8e d:\temp\teste.asm
+
+   O montador faz a analise do fonte, gerando um "arquivo listagem" e o "arquivo
+   binario" (executavel para a CPU-8E) no mesmo diretorio e com o mesmo nome que
+   o arquivo fonte, porem com as extensoes ".lst" e ".bin", respectivamente. Se 
+   forem encontrados erros no fonte isto sera sinalizado ao usuario e o arquivo
+   binario nao sera gerado, somente a listagem, onde os detalhes do(s) erro(s)
+   serao apontados.
+
+   O arquivo de listagem eh formatado em quatro (4) campos, designados:
+   - LN - "Line Number", contem a contagem de linhas do fonte, a partir de '1';
+   - LC - "Location Counter", contem o endereco em memoria onde cada instrucao
+     sera armazenada. Uma linha fonte que nao contenha instrucao para a UCP
+     tera este campo em branco;
+   - CODIGO, contem o codigo da instrucao, em hexadecimal, incluindo OpCode e
+     Operando, se for o caso;
+   - CODIGO FONTE, contem a linha correspondente do codigo-fonte que foi
+     montada.
+   Veja o arquivo "teste.lst" como exemplo de listagem, correspondente ao
+   fonte "teste.asm".
+
+   Se tudo estiver correto, voce agora pode utilizar o arquivo binario gerado
+   para executar o programa montado em uma implementacao da UCP-8E.
+
+
+                                                    Autor: Prof. Joel Guilherme
+                                            e-mail: joel.iesb@joelguilherme.com
+                 Organizacao: IESB - Instituto de Educacao Superior de Brasilia
+                                                    Local: Brasilia/DF - Brasil
+
+                                           Historico: Versao 1.0a de 01/02/2009
