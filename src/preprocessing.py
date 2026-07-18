@@ -1,4 +1,3 @@
-import pandas as pd
 from pandas import CategoricalDtype
 
 def prepare_data(df):
